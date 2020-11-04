@@ -14,21 +14,15 @@ u32 * outd;
 i32 get_ftable_offset()
 {
     u32 i;
-    i = 0;
-    while(i+4 < 0x01000000)
-    {
-        if ( swap32(romd[i  ]) == 0x7A656C64 // filetable "fingerprint" ("zelda@srd")
-          && swap32(romd[i+1]) == 0x61407372 // shows up 16-byte aligned a few 16-byte lines before the start of the filetable
-          &&(swap32(romd[i+2])               // the second file in the filetable ALWAYS refers to 0x00001060 -- if this assumption is wrong, please correct me!
-            &0xFF000000)           == 0x64000000)//
-        {
-            while(swap32(romd[i]) != 0x00001060) i += 4; // second filesystem entry always starts with 000001060
-            puts("Found file table!");
-            printf("%X\n", (i-4)*sizeof(u32));
-            return (i-4)*sizeof(u32);
-        }
-        i += 4;
-    }
+	for ( i = 1048; i+4 < 0x01000000; i += 4 )	// iQue does not use the "zelda@srd" fingerprint
+	{
+		if ( swap32(romd[i  ]) == 0x00000000	// makerom always ends at 0x1060, search for the first file entry in the table
+		  && swap32(romd[i+1]) == 0x00001060)
+		  {
+			  printf("Found file table: %X\n", (i)*sizeof(u32));
+			  return (i)*sizeof(u32);
+		  }
+	}
     return -1;
 }
 
@@ -55,7 +49,8 @@ int load_rom(char * filename)
 	} 
 	fclose(romf);
     
-    printf("Loaded ROM\nSize: %X\nWord 0x24F70: %X\n", size, swap32(romd[0x24F70/sizeof(u32)]));
+    // printf("Loaded ROM\nSize: %X\nWord 0x24F70: %X\n", size, swap32(romd[0x24F70/sizeof(u32)]));
+	printf("Loaded ROM\nSize: %X\n", size);
 	
 	puts("Copying ROM in RAM");
 	memcpy(outd, romd, size);
@@ -114,7 +109,7 @@ int main(int argc, char * argv[])
     
     romd = (u32*)malloc(0x04000000);
     outd = (u32*)malloc(0x04000000);
-	printf("%X, %X\n", romd, outd);
+	// printf("%X, %X\n", romd, outd);
     if(load_rom(argv[1]) < 0)
         return -1;
     
